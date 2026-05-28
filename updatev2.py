@@ -1661,162 +1661,204 @@ def insert_markdown_to_note(note_guid, markdown_content, writer_user_guid=None):
     return response_json
 
 
-def build_report_markdown(target_date, report_data):
-    """构建报告的 Markdown 内容。"""
-    total_tasks = report_data.get("total_parsed_tasks", 0)
-    total_update_tasks = report_data.get("total_update_tasks", 0)
-    success_tasks = report_data.get("progress_success_count", 0) + report_data.get("update_success_count", 0)
-    fail_records = report_data.get("fail_records", [])
 
-    success_owners = report_data.get("success_owners", set())
-    fail_owners_set = set()
-    for r in fail_records:
-        owner = r.get("owner_name", "")
-        dept = r.get("owner_dept", "")
-        if owner and owner != "任务整体":
-            fail_owners_set.add(f"{owner}({dept})" if dept else owner)
+def _report_owner_key(record):
+    """报告统计用人员 key。任务整体记录没有具体人员，使用 owners_display 展开。"""
+    owner = str(record.get("owner_name") or "").strip()
+    dept = str(record.get("owner_dept") or "").strip()
+    if not owner or owner == "任务整体":
+        return ""
+    return f"{owner}({dept})" if dept else owner
+
+
+def _split_owner_display_names(text):
+    """将 owners_display 里的顿号分隔人员展开，用于卡片简表。"""
+    text = str(text or "").strip()
+    if not text:
+        return []
+    names = []
+    for part in re.split(r"[、,，;；]", text):
+        part = part.strip()
+        if part and part not in names:
+            names.append(part)
+    return names
+
+
+def _uniq_keep_order(items):
+    result = []
+    seen = set()
+    for item in items:
+        item = str(item or "").strip()
+        if not item or item in seen:
+            continue
+        seen.add(item)
+        result.append(item)
+    return result
+
+
+def _format_people_for_card(people, limit=12):
+    people = _uniq_keep_order(people)
+    if not people:
+        return "无"
+    if len(people) <= limit:
+        return "、".join(people)
+    return "、".join(people[:limit]) + f" 等{len(people)}人"
+
+
+def _summarize_report_data(report_data):
+    """统一计算报告与卡片的摘要口径。"""
+    fail_records = report_data.get("fail_records", []) or []
+
+    task_not_updated = [r for r in fail_records if r.get("fail_type") == "not_updated"]
+    person_not_updated = [r for r in fail_records if r.get("fail_type") == "missing_fields"]
+    format_error = [r for r in fail_records if r.get("fail_type") == "format_error"]
+    exception_records = [
+        r for r in fail_records
+        if r.get("fail_type") not in ("not_updated", "missing_fields", "format_error")
+    ]
+
+    captured_owners = report_data.get("captured_owners", set()) or set()
+    today_update_owners = report_data.get("today_update_owners", set()) or set()
+
+    person_not_updated_people = _uniq_keep_order(_report_owner_key(r) for r in person_not_updated)
+    format_error_people = _uniq_keep_order(_report_owner_key(r) for r in format_error)
+    exception_people = _uniq_keep_order(_report_owner_key(r) for r in exception_records)
+
+    task_not_updated_people = []
+    for r in task_not_updated:
+        task_not_updated_people.extend(_split_owner_display_names(r.get("owners_display", "")))
+    task_not_updated_people = _uniq_keep_order(task_not_updated_people)
+
+    return {
+        "task_not_updated": task_not_updated,
+        "person_not_updated": person_not_updated,
+        "format_error": format_error,
+        "exception_records": exception_records,
+        "captured_owners": _uniq_keep_order(captured_owners),
+        "today_update_owners": _uniq_keep_order(today_update_owners),
+        "person_not_updated_people": person_not_updated_people,
+        "format_error_people": format_error_people,
+        "exception_people": exception_people,
+        "task_not_updated_people": task_not_updated_people,
+    }
+
+
+def build_report_markdown(target_date, report_data):
+    """构建报告的 Markdown/HTML 内容。报告正文保留详细表格。"""
+    total_tasks = report_data.get("total_parsed_tasks", 0)
+    captured_records = report_data.get("total_update_tasks", 0)
+    today_update_records = report_data.get("today_update_count", 0)
+    summary = _summarize_report_data(report_data)
+
+    task_not_updated = summary["task_not_updated"]
+    person_not_updated = summary["person_not_updated"]
+    format_error = summary["format_error"]
+    exception_records = summary["exception_records"]
 
     lines = []
     lines.append("<h2>任务更新情况汇总</h2>")
-    lines.append(f"<p>总解析任务数：<strong>{total_tasks}</strong>，参与处理记录：<strong>{total_update_tasks}</strong></p>")
-    lines.append(f"<p>成功更新：<strong>{success_tasks}</strong> 次操作，<strong>{len(success_owners)}</strong> 人</p>")
-    lines.append(f"<p>异常/缺失记录：<strong>{len(fail_records)}</strong> 条，涉及 <strong>{len(fail_owners_set)}</strong> 人</p>")
+    lines.append(f"<p><strong>总解析任务</strong>：{total_tasks}</p>")
+    lines.append(f"<p><strong>成功捕捉更新</strong>：{captured_records} 条记录，{len(summary['captured_owners'])} 人</p>")
+    lines.append(f"<p><strong>今日更新</strong>：{today_update_records} 条记录，{len(summary['today_update_owners'])} 人</p>")
+    lines.append(f"<p><strong>未更新</strong>：{len(person_not_updated)} 条记录，{len(summary['person_not_updated_people'])} 人</p>")
+    lines.append(f"<p><strong>格式错误</strong>：{len(format_error)} 条记录，{len(summary['format_error_people'])} 人</p>")
+    lines.append(f"<p><strong>异常/缺失记录</strong>：{len(exception_records)} 条，涉及 {len(summary['exception_people'])} 人</p>")
     lines.append("")
 
-    if fail_records:
-        lines.append("<h2>回收异常详情</h2>")
+    if task_not_updated:
+        lines.append("<h2>任务未更新状态汇总</h2>")
+        lines.append("<p>说明：只要任务下存在任一 owner 三项未完整填写，任务 title 即保持【X次未更新】；X 为任务级展示次数，不代表个人级更新时间。</p>")
+        lines.append("<table><thead><tr><th>任务Code</th><th>任务名称</th><th>Title未更新次数</th><th>未完整更新负责人</th></tr></thead><tbody>")
+        for r in task_not_updated:
+            code = escape_html(r.get("todo_code", ""))
+            title = escape_html(r.get("task_title", ""))
+            days = escape_html(str(r.get("days_not_updated", "")))
+            owners_display = escape_html(r.get("owners_display", "") or r.get("owner_name", ""))
+            lines.append(f"<tr><td>{code}</td><td>{title}</td><td>{days}次未更新</td><td>{owners_display}</td></tr>")
+        lines.append("</tbody></table>")
         lines.append("")
 
-        not_updated = [r for r in fail_records if r.get("fail_type") == "not_updated"]
-        format_error = [r for r in fail_records if r.get("fail_type") == "format_error"]
-        other_fail = [r for r in fail_records if r.get("fail_type") not in ("not_updated", "format_error")]
+    if person_not_updated:
+        lines.append("<h2>个人未更新情况</h2>")
+        lines.append("<p>说明：个人未更新指进展描述、承诺完成时间、风险等级三项中任一缺失或格式非法。已完整填写的人不会因为同任务其他 owner 未更新而进入本表。</p>")
+        lines.append("<table><thead><tr><th>负责人(部门)</th><th>任务Code</th><th>任务名称</th><th>Title未更新次数</th><th>未更新原因</th></tr></thead><tbody>")
+        for r in person_not_updated:
+            owner = escape_html(r.get("owner_name", ""))
+            dept = escape_html(r.get("owner_dept", ""))
+            owner_display = f"{owner}({dept})" if dept else owner
+            code = escape_html(r.get("todo_code", ""))
+            title = escape_html(r.get("task_title", ""))
+            days = escape_html(str(r.get("days_not_updated", "")))
+            reason = escape_html(r.get("missing_fields", "") or r.get("reason", ""))
+            lines.append(f"<tr><td>{owner_display}</td><td>{code}</td><td>{title}</td><td>{days}次</td><td>{reason}</td></tr>")
+        lines.append("</tbody></table>")
+        lines.append("")
 
-        if not_updated:
-            lines.append("<h3>任务未更新状态汇总</h3>")
-            lines.append("<p>说明：只要任务下存在任一 owner 三项未完整填写，任务 title 即保持【X次未更新】；X 为任务级展示次数，不代表个人级更新时间。</p>")
-            lines.append("<table><thead><tr><th>任务Code</th><th>任务名称</th><th>Title未更新次数</th><th>未完整更新负责人</th></tr></thead><tbody>")
-            for r in not_updated:
-                code = escape_html(r.get("todo_code", ""))
-                title = escape_html(r.get("task_title", ""))
-                days = escape_html(str(r.get("days_not_updated", "")))
-                owners_display = escape_html(r.get("owners_display", "") or r.get("owner_name", ""))
-                lines.append(f"<tr><td>{code}</td><td>{title}</td><td>{days}次未更新</td><td>{owners_display}</td></tr>")
-            lines.append("</tbody></table>")
-            lines.append("")
+    if format_error:
+        lines.append("<h2>格式错误人员情况</h2>")
+        lines.append("<table><thead><tr><th>负责人(部门)</th><th>任务Code</th><th>任务名称</th><th>错误字段</th><th>填写值</th><th>正确格式</th></tr></thead><tbody>")
+        for r in format_error:
+            owner = escape_html(r.get("owner_name", ""))
+            dept = escape_html(r.get("owner_dept", ""))
+            owner_display = f"{owner}({dept})" if dept else owner
+            code = escape_html(r.get("todo_code", ""))
+            title = escape_html(r.get("task_title", ""))
+            field = escape_html(r.get("error_field", ""))
+            raw = escape_html(r.get("error_raw", ""))
+            expected = escape_html(r.get("error_expected", ""))
+            lines.append(f"<tr><td>{owner_display}</td><td>{code}</td><td>{title}</td><td>{field}</td><td>{raw}</td><td>{expected}</td></tr>")
+        lines.append("</tbody></table>")
+        lines.append("")
 
-        if format_error:
-            lines.append("<h3>格式错误人员情况</h3>")
-            lines.append("<table><thead><tr><th>负责人(部门)</th><th>任务Code</th><th>任务名称</th><th>错误字段</th><th>填写值</th><th>正确格式</th></tr></thead><tbody>")
-            for r in format_error:
-                owner = escape_html(r.get("owner_name", ""))
-                dept = escape_html(r.get("owner_dept", ""))
-                owner_display = f"{owner}({dept})" if dept else owner
-                code = escape_html(r.get("todo_code", ""))
-                title = escape_html(r.get("task_title", ""))
-                field = escape_html(r.get("error_field", ""))
-                raw = escape_html(r.get("error_raw", ""))
-                expected = escape_html(r.get("error_expected", ""))
-                lines.append(f"<tr><td>{owner_display}</td><td>{code}</td><td>{title}</td><td>{field}</td><td>{raw}</td><td>{expected}</td></tr>")
-            lines.append("</tbody></table>")
-            lines.append("")
-
-        if other_fail:
-            lines.append("<h3>个人未更新 / 其他失败</h3>")
-            lines.append("<table><thead><tr><th>负责人(部门)</th><th>任务Code</th><th>任务名称</th><th>Title未更新次数</th><th>原因</th></tr></thead><tbody>")
-            for r in other_fail:
-                owner = escape_html(r.get("owner_name", ""))
-                dept = escape_html(r.get("owner_dept", ""))
-                owner_display = f"{owner}({dept})" if dept else owner
-                code = escape_html(r.get("todo_code", ""))
-                title = escape_html(r.get("task_title", ""))
-                days_raw = str(r.get("days_not_updated", "-"))
-                days = escape_html(f"{days_raw}次" if days_raw.strip() not in ("", "-") else "-")
-                reason = escape_html(r.get("reason", "") or r.get("missing_fields", ""))
-                if r.get("fail_type") == "missing_fields":
-                    reason = f"未完整更新：{reason}"
-                lines.append(f"<tr><td>{owner_display}</td><td>{code}</td><td>{title}</td><td>{days}</td><td>{reason}</td></tr>")
-            lines.append("</tbody></table>")
-            lines.append("")
+    if exception_records:
+        lines.append("<h2>更新异常 / 缺失记录</h2>")
+        lines.append("<p>说明：这里记录接口失败、Todo 未匹配、权限异常等系统处理异常，不包含正常业务口径下的个人未更新。</p>")
+        lines.append("<table><thead><tr><th>负责人(部门)</th><th>任务Code</th><th>任务名称</th><th>异常类型</th><th>原因</th></tr></thead><tbody>")
+        for r in exception_records:
+            owner = escape_html(r.get("owner_name", ""))
+            dept = escape_html(r.get("owner_dept", ""))
+            owner_display = f"{owner}({dept})" if dept else owner
+            code = escape_html(r.get("todo_code", ""))
+            title = escape_html(r.get("task_title", ""))
+            fail_type = escape_html(r.get("fail_type", ""))
+            reason = escape_html(r.get("reason", "") or r.get("missing_fields", "") or "-")
+            lines.append(f"<tr><td>{owner_display}</td><td>{code}</td><td>{title}</td><td>{fail_type}</td><td>{reason}</td></tr>")
+        lines.append("</tbody></table>")
+        lines.append("")
 
     return "\n".join(lines)
 
 
 def build_report_card_content(report_data):
-    """构建报告卡片正文（Markdown 表格展示，适合飞书卡片）。"""
+    """构建报告卡片正文。卡片只展示概览和问题人员名单，不展示详细表格。"""
     total_tasks = report_data.get("total_parsed_tasks", 0)
-    total_update_tasks = report_data.get("total_update_tasks", 0)
-    success_tasks = report_data.get("progress_success_count", 0) + report_data.get("update_success_count", 0)
-    fail_records = report_data.get("fail_records", [])
-
-    success_owners = report_data.get("success_owners", set())
-    fail_owners_set = set()
-    for r in fail_records:
-        owner = r.get("owner_name", "")
-        dept = r.get("owner_dept", "")
-        if owner and owner != "任务整体":
-            fail_owners_set.add(f"{owner}({dept})" if dept else owner)
+    captured_records = report_data.get("total_update_tasks", 0)
+    today_update_records = report_data.get("today_update_count", 0)
+    summary = _summarize_report_data(report_data)
 
     lines = []
-    lines.append(f"**总解析任务**：{total_tasks}，**参与处理记录**：{total_update_tasks}")
-    lines.append(f"**成功更新**：{success_tasks} 次操作，{len(success_owners)} 人")
-    lines.append(f"**异常/缺失记录**：{len(fail_records)} 条，涉及 {len(fail_owners_set)} 人")
+    lines.append(f"**总解析任务**：{total_tasks}")
+    lines.append(f"**成功捕捉更新**：{captured_records} 条记录，{len(summary['captured_owners'])} 人")
+    lines.append(f"**今日更新**：{today_update_records} 条记录，{len(summary['today_update_owners'])} 人")
+    lines.append(f"**未更新**：{len(summary['person_not_updated'])} 条记录，{len(summary['person_not_updated_people'])} 人")
+    lines.append(f"**格式错误**：{len(summary['format_error'])} 条记录，{len(summary['format_error_people'])} 人")
+    lines.append(f"**异常/缺失记录**：{len(summary['exception_records'])} 条，涉及 {len(summary['exception_people'])} 人")
 
-    if fail_records:
-        not_updated = [r for r in fail_records if r.get("fail_type") == "not_updated"]
-        format_error = [r for r in fail_records if r.get("fail_type") == "format_error"]
-        other_fail = [r for r in fail_records if r.get("fail_type") not in ("not_updated", "format_error")]
+    issue_lines = []
+    if summary["task_not_updated_people"]:
+        issue_lines.append(f"**任务未更新涉及人员**：{_format_people_for_card(summary['task_not_updated_people'])}")
+    if summary["person_not_updated_people"]:
+        issue_lines.append(f"**个人未更新人员**：{_format_people_for_card(summary['person_not_updated_people'])}")
+    if summary["format_error_people"]:
+        issue_lines.append(f"**格式错误人员**：{_format_people_for_card(summary['format_error_people'])}")
+    if summary["exception_people"]:
+        issue_lines.append(f"**异常/缺失涉及人员**：{_format_people_for_card(summary['exception_people'])}")
 
-        if not_updated:
-            lines.append("")
-            lines.append("**任务未更新状态汇总：**")
-            lines.append("")
-            lines.append("| 任务Code | 任务名称 | Title未更新次数 | 未完整更新负责人 |")
-            lines.append("| --- | --- | --- | --- |")
-            for r in not_updated:
-                code = r.get("todo_code", "") or "-"
-                title = r.get("task_title", "") or "-"
-                days = r.get("days_not_updated", "")
-                owners_display = r.get("owners_display", "") or r.get("owner_name", "") or "-"
-                lines.append(f"| {code} | {title} | {days}次 | {owners_display} |")
-
-        if format_error:
-            lines.append("")
-            lines.append("**格式错误：**")
-            lines.append("")
-            lines.append("| 负责人(部门) | 任务Code | 任务名称 | 错误字段 | 填写值 | 正确格式 |")
-            lines.append("| --- | --- | --- | --- | --- | --- |")
-            for r in format_error:
-                owner = r.get("owner_name", "")
-                dept = r.get("owner_dept", "")
-                owner_display = f"{owner}({dept})" if dept else owner
-                code = r.get("todo_code", "") or "-"
-                title = r.get("task_title", "") or "-"
-                field = r.get("error_field", "") or "-"
-                raw = r.get("error_raw", "") or "-"
-                expected = r.get("error_expected", "") or "-"
-                lines.append(f"| {owner_display} | {code} | {title} | {field} | {raw} | {expected} |")
-
-        if other_fail:
-            lines.append("")
-            lines.append("**个人未更新 / 其他失败：**")
-            lines.append("")
-            lines.append("| 负责人(部门) | 任务Code | 任务名称 | Title未更新次数 | 原因 |")
-            lines.append("| --- | --- | --- | --- | --- |")
-            for r in other_fail:
-                owner = r.get("owner_name", "")
-                dept = r.get("owner_dept", "")
-                owner_display = f"{owner}({dept})" if dept else owner
-                code = r.get("todo_code", "") or "-"
-                title = r.get("task_title", "") or "-"
-                days = r.get("days_not_updated", "-")
-                days_display = f"{days}次" if str(days).strip() not in ("", "-") else "-"
-                reason = r.get("reason", "") or r.get("missing_fields", "")
-                if r.get("fail_type") == "missing_fields":
-                    reason = f"未完整更新：{reason}"
-                lines.append(f"| {owner_display} | {code} | {title} | {days_display} | {reason} |")
+    if issue_lines:
+        lines.append("")
+        lines.extend(issue_lines)
 
     return "\n".join(lines)
-
 
 def build_report_feishu_card(title, card_content, note_url):
     """构造飞书卡片，包含"查看报告"按钮。"""
@@ -2288,6 +2330,9 @@ card_success_count = 0
 card_fail_count = 0
 card_skip_count = 0
 success_owners = set()
+captured_owners = set()
+today_update_count = 0
+today_update_owners = set()
 fail_records = []
 
 def _get_owner_dept(task):
@@ -2463,6 +2508,8 @@ for row in mapping_rows:
             owner_name = task.get("progress_owner_display") or task.get("owner_display_name") or ""
             owner_dept = _get_owner_dept(task)
             owner_label = f"{owner_name}({owner_dept})" if owner_dept else owner_name
+            if owner_label:
+                captured_owners.add(owner_label)
 
             # A1. 格式错误：owner 级，只发给/记录填错的人。
             if task.get("format_errors"):
@@ -2522,6 +2569,11 @@ for row in mapping_rows:
                     "missing_fields": "、".join(incomplete_reasons),
                     "days_not_updated": display_not_updated_count,
                 })
+            else:
+                # 今日更新：该 owner 在该任务下三项均完整且格式合法。
+                today_update_count += 1
+                if owner_label:
+                    today_update_owners.add(owner_label)
 
         # A4. Todo owners 中完全没有出现在日报解析结果里的 owner，记录为“个人未更新”。
         for owner in owners:
@@ -2758,6 +2810,9 @@ report_data = {
     "progress_success_count": progress_success_count,
     "update_success_count": update_success_count,
     "success_owners": success_owners,
+    "captured_owners": captured_owners,
+    "today_update_count": today_update_count,
+    "today_update_owners": today_update_owners,
     "fail_records": clean_fail_records,
 }
 
