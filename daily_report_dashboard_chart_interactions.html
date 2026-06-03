@@ -1,0 +1,2688 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>日报填写监控与管理看板</title>
+  <style>
+    :root {
+      --sidebar-width: 230px;
+      --drawer-width: 382px;
+      --bg: #f5f7fb;
+      --sidebar: #1a1d29;
+      --sidebar-2: #202435;
+      --sidebar-border: rgba(148, 163, 184, 0.18);
+      --primary: #4f6ef7;
+      --primary-dark: #3655e7;
+      --primary-soft: #eef3ff;
+      --primary-soft-2: #f6f8ff;
+      --text: #1e293b;
+      --text-2: #334155;
+      --muted: #64748b;
+      --muted-2: #94a3b8;
+      --border: #e2e8f0;
+      --border-soft: #eef2f7;
+      --card: #ffffff;
+      --green: #22c55e;
+      --yellow: #f59e0b;
+      --red: #ef4444;
+      --orange: #f97316;
+      --purple: #8b5cf6;
+      --shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 10px 28px rgba(15, 23, 42, 0.055);
+      --shadow-lg: 0 18px 42px rgba(15, 23, 42, 0.14);
+      --radius: 14px;
+      --radius-lg: 18px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", Roboto, Arial, sans-serif;
+      color: var(--text-2);
+      background:
+        radial-gradient(circle at 80% -10%, rgba(79, 110, 247, .10), transparent 30%),
+        linear-gradient(180deg, #f8fafc 0%, var(--bg) 35%, #f2f5fa 100%);
+      overflow-x: hidden;
+      letter-spacing: -0.01em;
+    }
+
+    button, input {
+      font-family: inherit;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .mobile-menu-btn {
+      display: none;
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      z-index: 80;
+      width: 42px;
+      height: 42px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,.96);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      cursor: pointer;
+      color: var(--text);
+      font-size: 22px;
+    }
+
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: var(--sidebar-width);
+      height: 100vh;
+      background: linear-gradient(180deg, #171b28 0%, var(--sidebar) 100%);
+      color: #cbd5e1;
+      z-index: 60;
+      transition: transform .3s ease;
+      box-shadow: 12px 0 28px rgba(15, 23, 42, .12);
+    }
+
+    .logo {
+      height: 82px;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid var(--sidebar-border);
+    }
+
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 11px;
+      background: linear-gradient(135deg, var(--primary), #6f8bff);
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-size: 18px;
+      font-weight: 900;
+      box-shadow: 0 12px 24px rgba(79, 110, 247, .25);
+    }
+
+    .logo-title {
+      color: #fff;
+      font-size: 18px;
+      font-weight: 850;
+      letter-spacing: -0.02em;
+    }
+
+    .nav {
+      margin-top: 24px;
+      padding: 0 16px;
+    }
+
+    .nav a,
+    .org-action {
+      width: 100%;
+      min-height: 46px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      border-radius: 11px;
+      color: #cbd5e1;
+      transition: all .18s ease;
+      cursor: pointer;
+      border: 0;
+      background: transparent;
+      text-align: left;
+      font-size: 14px;
+      font-weight: 650;
+    }
+
+    .nav a:hover,
+    .org-action:hover {
+      background: rgba(255,255,255,.065);
+      color: #fff;
+      transform: translateX(2px);
+    }
+
+    .nav a.active {
+      background: rgba(79, 110, 247, .16);
+      border-left: 4px solid var(--primary);
+      color: #89a0ff;
+      padding-left: 8px;
+    }
+
+    .nav-icon {
+      width: 22px;
+      text-align: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .org-action {
+      margin-top: 8px;
+      background: rgba(255,255,255,.045);
+      border: 1px solid rgba(148,163,184,.14);
+    }
+
+    .org-action.open {
+      background: rgba(79, 110, 247, .16);
+      color: #b7c5ff;
+      border-color: rgba(79,110,247,.28);
+    }
+
+    .side-section {
+      margin-top: 30px;
+      padding: 0 16px;
+    }
+
+    .side-title {
+      padding: 0 12px;
+      color: #64748b;
+      font-size: 12px;
+      font-weight: 850;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .mini-dept-list {
+      margin-top: 14px;
+      display: grid;
+      gap: 4px;
+      max-height: calc(100vh - 430px);
+      overflow-y: auto;
+      scrollbar-width: none;
+    }
+
+    .mini-dept-list::-webkit-scrollbar {
+      display: none;
+    }
+
+    .mini-dept {
+      width: 100%;
+      border: 0;
+      background: transparent;
+      color: #cbd5e1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 11px 12px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: .16s ease;
+    }
+
+    .mini-dept:hover,
+    .mini-dept.active {
+      background: rgba(255,255,255,.07);
+    }
+
+    .mini-dept.active {
+      color: #fff;
+    }
+
+    .mini-dept span:first-child {
+      font-size: 14px;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .rate-pill {
+      font-size: 12px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-weight: 850;
+      line-height: 1.45;
+      flex-shrink: 0;
+    }
+
+    .rate-good {
+      color: #4ade80;
+      background: rgba(34,197,94,.14);
+    }
+
+    .rate-mid {
+      color: #facc15;
+      background: rgba(245,158,11,.15);
+    }
+
+    .rate-bad {
+      color: #f87171;
+      background: rgba(239,68,68,.14);
+    }
+
+    .user-box {
+      position: absolute;
+      left: 0;
+      bottom: 0;
+      width: 100%;
+      padding: 22px 24px;
+      border-top: 1px solid var(--sidebar-border);
+      background: linear-gradient(180deg, rgba(26,29,41,.88), var(--sidebar));
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .avatar {
+      width: 42px;
+      height: 42px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, var(--primary), #6d86ff);
+      color: #fff;
+      display: grid;
+      place-items: center;
+      font-size: 18px;
+      font-weight: 850;
+      flex-shrink: 0;
+    }
+
+    .user-main {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .user-name {
+      color: #fff;
+      font-weight: 760;
+      font-size: 14px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .user-dept {
+      color: #64748b;
+      font-size: 12px;
+      margin-top: 3px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .logout {
+      color: #64748b;
+      font-size: 18px;
+    }
+
+    .main {
+      margin-left: var(--sidebar-width);
+      min-height: 100vh;
+      transition: margin .3s ease;
+    }
+
+    .top-header {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      min-height: 82px;
+      background: rgba(255,255,255,.96);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+    }
+
+    .welcome-line {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+
+    .welcome-muted {
+      font-size: 18px;
+      color: #94a3b8;
+      font-weight: 500;
+    }
+
+    .welcome-name {
+      font-size: 38px;
+      line-height: 1;
+      font-weight: 850;
+      color: var(--primary);
+      letter-spacing: -0.045em;
+    }
+
+    .date-display {
+      color: var(--muted);
+      font-size: 14px;
+      margin-top: 6px;
+    }
+
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .dept-chip {
+      height: 40px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--border);
+      background: #f8fafc;
+      border-radius: 11px;
+      padding: 0 12px;
+      color: #475569;
+      font-size: 13px;
+      font-weight: 760;
+      cursor: pointer;
+      transition: .16s ease;
+    }
+
+    .dept-chip:hover {
+      border-color: #c7d2fe;
+      color: var(--primary);
+      background: #fff;
+    }
+
+    .date-input {
+      height: 40px;
+      border: 1px solid var(--border);
+      background: #f8fafc;
+      border-radius: 11px;
+      padding: 0 12px;
+      outline: none;
+      color: #475569;
+      transition: .16s;
+    }
+
+    .date-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(79,110,247,.12);
+      background: #fff;
+    }
+
+    .icon-button {
+      width: 40px;
+      height: 40px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--border);
+      background: #f8fafc;
+      color: #64748b;
+      border-radius: 11px;
+      cursor: pointer;
+      transition: .16s;
+      font-size: 18px;
+    }
+
+    .icon-button:hover {
+      background: #fff;
+      color: var(--primary);
+      border-color: #c7d2fe;
+      transform: translateY(-1px);
+    }
+
+    .page {
+      padding: 32px;
+      display: grid;
+      gap: 28px;
+    }
+
+    .section {
+      display: grid;
+      gap: 16px;
+    }
+
+    .current-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .current-label {
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 760;
+    }
+
+    .breadcrumb {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .crumb {
+      font-size: 12px;
+      font-weight: 760;
+      color: var(--primary);
+      background: var(--primary-soft);
+      padding: 5px 10px;
+      border-radius: 999px;
+    }
+
+    .overview-grid {
+      display: grid;
+      grid-template-columns: 4fr 8fr;
+      gap: 24px;
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid #eef2f7;
+      box-shadow: var(--shadow);
+      border-radius: var(--radius);
+    }
+
+    .card-pad {
+      padding: 24px;
+    }
+
+    .overview-card {
+      display: flex;
+      align-items: center;
+      gap: 30px;
+    }
+
+    .donut {
+      width: 128px;
+      height: 128px;
+      border-radius: 999px;
+      background: conic-gradient(var(--primary) 0deg, var(--primary) var(--angle), #f1f5f9 var(--angle), #f1f5f9 360deg);
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .donut::after {
+      content: "";
+      position: absolute;
+      inset: 17px;
+      border-radius: 999px;
+      background: #fff;
+    }
+
+    .donut-center {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      display: grid;
+      place-items: center;
+      color: var(--text);
+      font-size: 22px;
+      font-weight: 850;
+    }
+
+    .overview-label {
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 760;
+    }
+
+    .overview-value {
+      margin-top: 4px;
+      color: var(--text);
+      font-size: 32px;
+      font-weight: 850;
+      letter-spacing: -0.035em;
+    }
+
+    .trend-up {
+      margin-top: 10px;
+      color: #22c55e;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .metric-card {
+      padding: 24px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .metric-card.red-left {
+      border-left: 4px solid var(--red);
+    }
+
+    .metric-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .metric-label {
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 760;
+    }
+
+    .metric-number {
+      margin-top: 6px;
+      font-size: 32px;
+      font-weight: 850;
+      color: var(--text);
+      letter-spacing: -0.035em;
+    }
+
+    .metric-number.danger {
+      color: #dc2626;
+    }
+
+    .metric-unit {
+      color: #94a3b8;
+      font-size: 14px;
+      font-weight: 400;
+    }
+
+    .metric-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      font-size: 20px;
+    }
+
+    .metric-icon.blue { background: #eff6ff; color: var(--primary); }
+    .metric-icon.green { background: #f0fdf4; color: var(--green); }
+    .metric-icon.red { background: #fef2f2; color: var(--red); }
+
+    .chart-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 24px;
+    }
+
+    .card-title-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 22px;
+    }
+
+    .card-title {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 850;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .title-icon {
+      color: var(--primary);
+      font-size: 18px;
+    }
+
+    .card-subtitle {
+      color: var(--muted-2);
+      font-size: 12px;
+      font-weight: 650;
+      line-height: 1.5;
+    }
+
+    .canvas {
+      width: 100%;
+      height: 300px;
+      display: block;
+    }
+
+    .rank-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .rank-row {
+      display: grid;
+      grid-template-columns: 28px 1fr 52px;
+      gap: 12px;
+      align-items: center;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid #eef2f7;
+      background: #fbfdff;
+      cursor: pointer;
+      transition: .16s;
+    }
+
+    .rank-row:hover {
+      border-color: #bfdbfe;
+      background: #f8fbff;
+      transform: translateY(-1px);
+    }
+
+    .rank-no {
+      width: 26px;
+      height: 26px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      background: var(--primary-soft);
+      color: var(--primary);
+      font-size: 12px;
+      font-weight: 850;
+    }
+
+    .rank-name {
+      font-size: 13px;
+      font-weight: 850;
+      color: #475569;
+      margin-bottom: 7px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .rank-bar-bg {
+      height: 8px;
+      border-radius: 999px;
+      background: #f1f5f9;
+      overflow: hidden;
+    }
+
+    .rank-bar {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--primary), #7c9cff);
+    }
+
+    .rank-rate {
+      font-size: 13px;
+      font-weight: 850;
+      color: var(--text);
+      text-align: right;
+    }
+
+    .rank-meta {
+      color: #94a3b8;
+      font-size: 11px;
+      margin-top: 5px;
+    }
+
+    .content-grid {
+      display: grid;
+      grid-template-columns: 8fr 4fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    .tab-card {
+      overflow: hidden;
+    }
+
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid #eef2f7;
+    }
+
+    .tab {
+      flex: 1;
+      height: 54px;
+      border: 0;
+      background: #fff;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 760;
+      cursor: pointer;
+      transition: .16s;
+      border-bottom: 2px solid transparent;
+    }
+
+    .tab:hover {
+      color: var(--text);
+    }
+
+    .tab.active {
+      color: var(--primary);
+      background: rgba(79, 110, 247, .04);
+      border-bottom-color: var(--primary);
+    }
+
+    .tab-content {
+      padding: 24px;
+      min-height: 400px;
+    }
+
+    .summary-list {
+      display: grid;
+      gap: 16px;
+    }
+
+    .summary-card {
+      padding: 20px;
+      border-radius: 14px;
+      background: #f8fafc;
+      border: 1px solid #eef2f7;
+    }
+
+    .summary-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .summary-title {
+      margin: 0;
+      color: var(--text);
+      font-size: 15px;
+      font-weight: 850;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .summary-meta {
+      color: var(--muted-2);
+      font-size: 12px;
+      margin-top: 5px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      background: #dbeafe;
+      color: #2563eb;
+      font-size: 11px;
+      font-weight: 760;
+      white-space: nowrap;
+    }
+
+    .summary-body {
+      color: #475569;
+      font-size: 14px;
+      line-height: 1.8;
+    }
+
+    .summary-body ul {
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    .summary-footer {
+      margin-top: 18px;
+      padding-top: 18px;
+      border-top: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .link-group {
+      display: flex;
+      gap: 18px;
+      flex-wrap: wrap;
+    }
+
+    .text-link {
+      color: #2563eb;
+      font-size: 13px;
+      font-weight: 760;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .text-link.ai {
+      color: #7c3aed;
+    }
+
+    .project-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .project-card {
+      padding: 18px;
+      border-radius: 14px;
+      background: #fff;
+      border: 1px solid var(--border);
+      transition: .16s;
+    }
+
+    .project-card:hover {
+      box-shadow: 0 8px 24px rgba(15, 23, 42, .07);
+      border-color: #cbd5e1;
+      transform: translateY(-1px);
+    }
+
+    .project-title {
+      font-size: 15px;
+      font-weight: 850;
+      color: var(--text);
+      margin-bottom: 10px;
+    }
+
+    .side-col {
+      display: grid;
+      gap: 24px;
+    }
+
+    .risk-list,
+    .plan-list {
+      display: grid;
+      gap: 14px;
+    }
+
+    .risk-card {
+      padding: 16px;
+      border-radius: 0 10px 10px 0;
+      border-left: 4px solid;
+    }
+
+    .risk-card.high {
+      background: #fef2f2;
+      border-left-color: var(--red);
+    }
+
+    .risk-card.mid {
+      background: #fff7ed;
+      border-left-color: var(--orange);
+    }
+
+    .risk-card.low {
+      background: #eff6ff;
+      border-left-color: var(--primary);
+    }
+
+    .risk-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .risk-project {
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 850;
+    }
+
+    .risk-body {
+      font-size: 12px;
+      color: #475569;
+      line-height: 1.75;
+      margin-bottom: 10px;
+    }
+
+    .risk-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: #64748b;
+      font-size: 11px;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .risk-level {
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 850;
+      white-space: nowrap;
+    }
+
+    .risk-level.high {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .risk-level.mid {
+      background: #ffedd5;
+      color: #9a3412;
+    }
+
+    .risk-level.low {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .risk-analysis {
+      padding-top: 9px;
+      border-top: 1px solid rgba(148,163,184,.25);
+      color: #64748b;
+      font-size: 11px;
+      line-height: 1.6;
+    }
+
+    .plan-section-title {
+      color: #64748b;
+      font-size: 12px;
+      font-weight: 850;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .download-link {
+      border: 0;
+      background: transparent;
+      color: var(--primary);
+      font-size: 11px;
+      cursor: pointer;
+      font-weight: 760;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .plan-dot-row {
+      display: flex;
+      gap: 12px;
+    }
+
+    .plan-dot {
+      width: 7px;
+      height: 7px;
+      margin-top: 7px;
+      border-radius: 999px;
+      background: var(--primary);
+      flex-shrink: 0;
+    }
+
+    .plan-text {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .plan-project {
+      font-size: 12px;
+      color: var(--text);
+      font-weight: 850;
+      margin-bottom: 5px;
+    }
+
+    .plan-content {
+      color: #475569;
+      font-size: 12px;
+      line-height: 1.65;
+    }
+
+    .plan-author {
+      color: #94a3b8;
+      font-size: 11px;
+      margin-top: 5px;
+    }
+
+    .team-plan-card {
+      padding: 12px;
+      background: #f8fafc;
+      border-radius: 10px;
+    }
+
+    .empty {
+      padding: 28px;
+      border: 1px dashed #cbd5e1;
+      border-radius: 12px;
+      color: #94a3b8;
+      text-align: center;
+      font-size: 13px;
+      background: #f8fafc;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .drawer-mask {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, .34);
+      z-index: 70;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .24s ease;
+      backdrop-filter: blur(2px);
+    }
+
+    .drawer-mask.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .org-drawer {
+      position: fixed;
+      top: 0;
+      left: var(--sidebar-width);
+      width: var(--drawer-width);
+      height: 100vh;
+      background: #fff;
+      border-right: 1px solid var(--border);
+      z-index: 75;
+      box-shadow: var(--shadow-lg);
+      transform: translateX(calc(-1 * var(--drawer-width) - 8px));
+      transition: transform .28s cubic-bezier(.22, .61, .36, 1);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .org-drawer.active {
+      transform: translateX(0);
+    }
+
+    .drawer-head {
+      padding: 22px 20px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      align-items: flex-start;
+      background:
+        radial-gradient(circle at 0% 0%, rgba(79,110,247,.10), transparent 38%),
+        linear-gradient(180deg, #fff, #fbfdff);
+    }
+
+    .drawer-title {
+      font-size: 18px;
+      font-weight: 850;
+      color: var(--text);
+    }
+
+    .drawer-subtitle {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 5px;
+      line-height: 1.55;
+    }
+
+    .drawer-close {
+      width: 34px;
+      height: 34px;
+      border: 1px solid var(--border);
+      background: #f8fafc;
+      border-radius: 10px;
+      color: #64748b;
+      cursor: pointer;
+      font-size: 20px;
+      transition: .16s ease;
+    }
+
+    .drawer-close:hover {
+      background: #fff;
+      color: var(--primary);
+      border-color: #c7d2fe;
+      transform: rotate(90deg);
+    }
+
+    .drawer-toolbar {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      display: grid;
+      gap: 10px;
+      background: #fff;
+    }
+
+    .drawer-search-wrap {
+      position: relative;
+    }
+
+    .drawer-search-wrap span {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #94a3b8;
+      font-size: 14px;
+    }
+
+    .drawer-search-wrap input {
+      width: 100%;
+      height: 40px;
+      border: 1px solid var(--border);
+      background: #f8fafc;
+      border-radius: 10px;
+      padding: 0 12px 0 34px;
+      outline: none;
+      transition: .16s;
+    }
+
+    .drawer-search-wrap input:focus {
+      border-color: var(--primary);
+      background: #fff;
+      box-shadow: 0 0 0 4px rgba(79,110,247,.10);
+    }
+
+    .tree-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .tree-action-btn {
+      flex: 1;
+      height: 32px;
+      border: 1px solid var(--border);
+      background: #fff;
+      color: #475569;
+      border-radius: 9px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 760;
+      transition: .16s;
+    }
+
+    .tree-action-btn:hover {
+      color: var(--primary);
+      border-color: #c7d2fe;
+      background: var(--primary-soft-2);
+    }
+
+    .drawer-body {
+      padding: 14px 14px 26px;
+      overflow: auto;
+    }
+
+    .tree {
+      font-size: 13px;
+    }
+
+    .tree ul {
+      list-style: none;
+      margin: 0;
+      padding-left: 16px;
+      position: relative;
+    }
+
+    .tree > ul {
+      padding-left: 0;
+    }
+
+    .tree ul ul::before {
+      content: "";
+      position: absolute;
+      left: 7px;
+      top: 0;
+      bottom: 8px;
+      border-left: 1px dashed #d7deeb;
+    }
+
+    .tree-node {
+      margin: 4px 0;
+      position: relative;
+    }
+
+    .node-line {
+      min-height: 40px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-radius: 12px;
+      padding: 8px 9px;
+      cursor: pointer;
+      transition: background .16s ease, border-color .16s ease, transform .16s ease;
+      border: 1px solid transparent;
+      position: relative;
+    }
+
+    .node-line:hover {
+      background: #f8fafc;
+      transform: translateX(2px);
+    }
+
+    .node-line.selected {
+      background: linear-gradient(135deg, #eef3ff, #f7f9ff);
+      border-color: #c7d2fe;
+      color: var(--primary);
+      font-weight: 850;
+      box-shadow: 0 6px 16px rgba(79,110,247,.10);
+    }
+
+    .node-expander {
+      width: 22px;
+      height: 22px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      background: #f1f5f9;
+      color: #64748b;
+      font-size: 12px;
+      flex-shrink: 0;
+      border: 1px solid #edf2f7;
+      transition: .16s ease;
+    }
+
+    .node-expander.has-children:hover {
+      color: var(--primary);
+      background: #eef3ff;
+      border-color: #c7d2fe;
+    }
+
+    .node-expander.collapsed {
+      transform: rotate(-90deg);
+    }
+
+    .node-name {
+      min-width: 0;
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .level-tag {
+      color: #64748b;
+      background: #f1f5f9;
+      border-radius: 999px;
+      padding: 2px 6px;
+      font-size: 11px;
+      flex-shrink: 0;
+      font-weight: 760;
+    }
+
+    .children-wrap {
+      display: grid;
+      grid-template-rows: 1fr;
+      transition: grid-template-rows .22s ease, opacity .2s ease;
+      opacity: 1;
+    }
+
+    .children-wrap.collapsed {
+      grid-template-rows: 0fr;
+      opacity: .35;
+    }
+
+    .children-inner {
+      overflow: hidden;
+    }
+
+    .highlight-mark {
+      background: #fef3c7;
+      color: #92400e;
+      border-radius: 4px;
+      padding: 0 2px;
+    }
+
+
+    .donut {
+      cursor: pointer;
+      transition: transform .18s ease, filter .18s ease, box-shadow .18s ease;
+    }
+
+    .donut:hover {
+      transform: scale(1.04);
+      filter: drop-shadow(0 12px 22px rgba(79, 110, 247, .18));
+    }
+
+    .donut:active {
+      transform: scale(.98);
+    }
+
+    .metric-card {
+      transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+    }
+
+    .metric-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 28px rgba(15, 23, 42, .08);
+      border-color: #dbe3ef;
+    }
+
+    .canvas {
+      cursor: crosshair;
+      border-radius: 12px;
+      transition: background .16s ease;
+    }
+
+    .canvas:hover {
+      background: linear-gradient(180deg, rgba(79,110,247,.025), transparent);
+    }
+
+    .chart-tooltip {
+      position: fixed;
+      z-index: 120;
+      min-width: 132px;
+      padding: 9px 11px;
+      border-radius: 10px;
+      background: rgba(15, 23, 42, .92);
+      color: #fff;
+      font-size: 12px;
+      box-shadow: 0 12px 28px rgba(15, 23, 42, .25);
+      pointer-events: none;
+      opacity: 0;
+      transform: translateY(6px);
+      transition: opacity .12s ease, transform .12s ease;
+    }
+
+    .chart-tooltip.active {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .chart-tooltip strong {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 3px;
+    }
+
+    .modal-mask {
+      position: fixed;
+      inset: 0;
+      z-index: 130;
+      display: grid;
+      place-items: center;
+      background: rgba(15, 23, 42, .36);
+      backdrop-filter: blur(3px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .18s ease;
+    }
+
+    .modal-mask.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .detail-modal {
+      width: min(520px, calc(100vw - 32px));
+      background: #fff;
+      border-radius: 18px;
+      box-shadow: 0 22px 54px rgba(15, 23, 42, .25);
+      overflow: hidden;
+      transform: translateY(12px) scale(.98);
+      transition: transform .18s ease;
+    }
+
+    .modal-mask.active .detail-modal {
+      transform: translateY(0) scale(1);
+    }
+
+    .modal-head {
+      padding: 20px 22px;
+      border-bottom: 1px solid #eef2f7;
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+      background: linear-gradient(180deg, #fff, #fbfdff);
+    }
+
+    .modal-title {
+      font-size: 17px;
+      font-weight: 850;
+      color: var(--text);
+    }
+
+    .modal-sub {
+      margin-top: 5px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .modal-close {
+      width: 34px;
+      height: 34px;
+      border: 1px solid var(--border);
+      background: #f8fafc;
+      border-radius: 10px;
+      cursor: pointer;
+      color: #64748b;
+      font-size: 20px;
+      transition: .16s;
+    }
+
+    .modal-close:hover {
+      color: var(--primary);
+      border-color: #c7d2fe;
+      background: #fff;
+    }
+
+    .modal-body {
+      padding: 20px 22px 22px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .detail-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: center;
+      padding: 12px 14px;
+      background: #f8fafc;
+      border: 1px solid #eef2f7;
+      border-radius: 12px;
+    }
+
+    .detail-name {
+      font-size: 13px;
+      font-weight: 780;
+      color: #334155;
+    }
+
+    .detail-meta {
+      margin-top: 4px;
+      color: #94a3b8;
+      font-size: 11px;
+    }
+
+    .detail-rate {
+      font-size: 15px;
+      font-weight: 850;
+      color: var(--primary);
+    }
+
+    .click-hint {
+      color: #94a3b8;
+      font-size: 11px;
+      margin-top: 7px;
+    }
+
+
+    @media (max-width: 1200px) {
+      .overview-grid,
+      .chart-grid,
+      .content-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .metric-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+      .project-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 992px) {
+      .mobile-menu-btn {
+        display: grid;
+        place-items: center;
+      }
+
+      .sidebar {
+        transform: translateX(-100%);
+      }
+
+      .sidebar.open {
+        transform: translateX(0);
+      }
+
+      .main {
+        margin-left: 0;
+      }
+
+      .org-drawer {
+        left: 0;
+      }
+
+      .top-header {
+        padding-left: 72px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .top-header {
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 72px 16px 16px;
+      }
+
+      .page {
+        padding: 16px;
+      }
+
+      .welcome-name {
+        font-size: 32px;
+      }
+
+      .overview-card {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .metric-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .org-drawer {
+        width: min(94vw, var(--drawer-width));
+        transform: translateX(-100%);
+      }
+
+      .org-drawer.active {
+        transform: translateX(0);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+
+  <aside class="sidebar" id="sidebar">
+    <div class="logo">
+      <div class="logo-icon">▦</div>
+      <div class="logo-title">日报中心</div>
+    </div>
+
+    <nav class="nav">
+      <a class="active" href="javascript:void(0)" data-page="dept" onclick="handleNavClick('dept')">
+        <span class="nav-icon">👥</span>
+        <span>部门日报</span>
+      </a>
+      <a href="javascript:void(0)" data-page="project" onclick="handleNavClick('project')">
+        <span class="nav-icon">💼</span>
+        <span>平台项目</span>
+      </a>
+      <button class="org-action" id="orgAction" onclick="toggleOrgDrawer()">
+        <span class="nav-icon">🏢</span>
+        <span>展开组织架构</span>
+      </button>
+    </nav>
+
+    <div class="side-section">
+      <div class="side-title">产品研发中心</div>
+      <div class="mini-dept-list" id="miniDeptList"></div>
+    </div>
+
+    <div class="user-box">
+      <div class="avatar">段</div>
+      <div class="user-main">
+        <div class="user-name">段明昊</div>
+        <div class="user-dept">产品研发中心</div>
+      </div>
+      <div class="logout">↩</div>
+    </div>
+  </aside>
+
+  <div class="drawer-mask" id="drawerMask" onclick="closeOrgDrawer()"></div>
+
+  <section class="org-drawer" id="orgDrawer">
+    <div class="drawer-head">
+      <div>
+        <div class="drawer-title">组织架构</div>
+        <div class="drawer-subtitle">点击节点切换看板；点击箭头可展开/隐藏下级部门。L4 及以上会自动汇总旗下 L5 部门。</div>
+      </div>
+      <button class="drawer-close" onclick="closeOrgDrawer()">×</button>
+    </div>
+    <div class="drawer-toolbar">
+      <div class="drawer-search-wrap">
+        <span>⌕</span>
+        <input id="orgSearchInput" placeholder="搜索部门名称..." oninput="renderTree()" />
+      </div>
+      <div class="tree-actions">
+        <button class="tree-action-btn" onclick="expandAll()">全部展开</button>
+        <button class="tree-action-btn" onclick="collapseToLevel(2)">收起到 L2</button>
+        <button class="tree-action-btn" onclick="selectDept('dept_root')">回到根部</button>
+      </div>
+    </div>
+    <div class="drawer-body">
+      <div class="tree" id="orgTree"></div>
+    </div>
+  </section>
+
+
+  <div class="chart-tooltip" id="chartTooltip"></div>
+
+  <div class="modal-mask" id="detailModalMask" onclick="closeDetailModal(event)">
+    <div class="detail-modal" onclick="event.stopPropagation()">
+      <div class="modal-head">
+        <div>
+          <div class="modal-title" id="modalTitle">填写明细</div>
+          <div class="modal-sub" id="modalSub">当前部门统计</div>
+        </div>
+        <button class="modal-close" onclick="closeDetailModal()">×</button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
+
+
+  <main class="main" id="main">
+    <header class="top-header">
+      <div>
+        <div class="welcome-line">
+          <span class="welcome-muted">Welcome，</span>
+          <span class="welcome-name">段明昊</span>
+        </div>
+        <div class="date-display" id="currentDateDisplay">2026年6月3日 星期三</div>
+      </div>
+
+      <div class="header-controls">
+        <button class="dept-chip" onclick="toggleOrgDrawer()">
+          <span>🏢</span>
+          <span id="currentDeptChip">产品研发中心</span>
+        </button>
+        <input class="date-input" id="datePicker" type="date" value="2026-06-03" onchange="refreshDashboard()" />
+        <button class="icon-button" title="刷新" onclick="refreshDashboard()">↻</button>
+      </div>
+    </header>
+
+    <div class="page">
+      <section class="section">
+        <div class="current-row">
+          <span class="current-label">当前部门：</span>
+          <div class="breadcrumb" id="breadcrumb"></div>
+        </div>
+
+        <div class="overview-grid">
+          <div class="card card-pad overview-card">
+            <div class="donut" id="donut" onclick="openFillDetailModal()" title="点击查看填写明细">
+              <div class="donut-center" id="fillRateText">0%</div>
+            </div>
+            <div>
+              <div class="overview-label">总体填写率</div>
+              <div class="overview-value" id="overallRateText">0%</div>
+              <div class="trend-up">↗ 比昨日提升 2.3%</div><div class="click-hint">点击环形图查看填写明细</div>
+              <div class="card-subtitle" style="margin-top:8px;" id="scopeText">当前统计范围</div>
+            </div>
+          </div>
+
+          <div class="metric-grid">
+            <div class="card metric-card">
+              <div class="metric-top">
+                <div>
+                  <div class="metric-label">应填人数</div>
+                  <div class="metric-number"><span id="requiredCount">0</span> <span class="metric-unit">人</span></div>
+                </div>
+                <div class="metric-icon blue">👥</div>
+              </div>
+            </div>
+
+            <div class="card metric-card">
+              <div class="metric-top">
+                <div>
+                  <div class="metric-label">已填人数</div>
+                  <div class="metric-number"><span id="filledCount">0</span> <span class="metric-unit">人</span></div>
+                </div>
+                <div class="metric-icon green">✓</div>
+              </div>
+            </div>
+
+            <div class="card metric-card red-left">
+              <div class="metric-top">
+                <div>
+                  <div class="metric-label">未填人数</div>
+                  <div class="metric-number danger"><span id="unfilledCount">0</span> <span class="metric-unit">人</span></div>
+                </div>
+                <div class="metric-icon red">✕</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="chart-grid">
+        <div class="card card-pad">
+          <div class="card-title-row">
+            <h3 class="card-title"><span class="title-icon">📈</span>一周填写趋势</h3>
+            <span class="card-subtitle" id="trendSub">最近 7 天数据</span>
+          </div>
+          <canvas class="canvas" id="trendCanvas" width="700" height="300"></canvas>
+        </div>
+
+        <div class="card card-pad">
+          <div class="card-title-row">
+            <h3 class="card-title"><span class="title-icon">📊</span><span id="rankTitle">部门当日填写率排行</span></h3>
+            <span class="card-subtitle" id="rankSub">按当前层级自动切换</span>
+          </div>
+          <div class="rank-list" id="rankList"></div>
+        </div>
+      </section>
+
+      <section class="content-grid">
+        <div class="card tab-card">
+          <div class="tabs">
+            <button class="tab active" data-tab="dept" onclick="switchTab('dept')">部门日报</button>
+            <button class="tab" data-tab="project" onclick="switchTab('project')">平台项目日报</button>
+          </div>
+
+          <div class="tab-content">
+            <div id="deptContent"></div>
+            <div id="projectContent" class="hidden"></div>
+          </div>
+        </div>
+
+        <aside class="side-col">
+          <div class="card card-pad">
+            <div class="card-title-row">
+              <h3 class="card-title"><span style="color:#f97316;">⚠</span>困难与风险</h3>
+              <span class="card-subtitle" id="riskCount">0 条</span>
+            </div>
+            <div class="risk-list" id="riskList"></div>
+          </div>
+
+          <div class="card card-pad">
+            <div class="card-title-row">
+              <h3 class="card-title"><span class="title-icon">📅</span>下一步计划</h3>
+            </div>
+            <div class="plan-list" id="planList"></div>
+          </div>
+        </aside>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const orgTree = {
+      id: "dept_root",
+      name: "产品研发中心",
+      level: 1,
+      children: [
+        {
+          id: "dept_l2_product",
+          name: "产品与设计事业部",
+          level: 2,
+          children: [
+            {
+              id: "dept_l3_product",
+              name: "产品平台部",
+              level: 3,
+              children: [
+                {
+                  id: "dept_l4_product_core",
+                  name: "核心产品组",
+                  level: 4,
+                  children: [
+                    { id: "dept_l5_product_a", name: "产品一组", level: 5 },
+                    { id: "dept_l5_product_b", name: "产品二组", level: 5 }
+                  ]
+                }
+              ]
+            },
+            {
+              id: "dept_l3_design",
+              name: "体验设计部",
+              level: 3,
+              children: [
+                {
+                  id: "dept_l4_design_core",
+                  name: "设计交付组",
+                  level: 4,
+                  children: [
+                    { id: "dept_l5_design_ui", name: "UI设计组", level: 5 },
+                    { id: "dept_l5_design_ux", name: "UX研究组", level: 5 }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          id: "dept_l2_rd",
+          name: "研发工程事业部",
+          level: 2,
+          children: [
+            {
+              id: "dept_l3_front",
+              name: "前端平台部",
+              level: 3,
+              children: [
+                {
+                  id: "dept_l4_front",
+                  name: "前端工程组",
+                  level: 4,
+                  children: [
+                    { id: "dept_l5_front_dashboard", name: "前端看板组", level: 5 },
+                    { id: "dept_l5_front_mobile", name: "移动端适配组", level: 5 }
+                  ]
+                }
+              ]
+            },
+            {
+              id: "dept_l3_backend",
+              name: "后端平台部",
+              level: 3,
+              children: [
+                {
+                  id: "dept_l4_backend",
+                  name: "后端工程组",
+                  level: 4,
+                  children: [
+                    { id: "dept_l5_api", name: "API接口组", level: 5 },
+                    { id: "dept_l5_data", name: "数据服务组", level: 5 }
+                  ]
+                }
+              ]
+            },
+            {
+              id: "dept_l3_test",
+              name: "测试平台部",
+              level: 3,
+              children: [
+                {
+                  id: "dept_l4_test",
+                  name: "测试工程组",
+                  level: 4,
+                  children: [
+                    { id: "dept_l5_auto_test", name: "自动化测试组", level: 5 },
+                    { id: "dept_l5_manual_test", name: "业务测试组", level: 5 }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    };
+
+    const leafData = {
+      dept_l5_product_a: {
+        required: 10, filled: 9, trend: [82,85,80,88,90,92,90],
+        summary: ["完成需求文档最终评审，明确 V3.0 三个核心功能模块。", "与设计团队确认新版交互方案和用户流程。", "明日启动高保真原型设计工作。"],
+        projects: [{ name: "日报看板系统", platform: "平台项目", owner: "张三", progress: "完成看板核心指标定义与页面信息架构梳理，准备进入高保真原型阶段。", rate: 90 }],
+        risks: [],
+        plans: [{ scope: "mine", project: "日报看板系统", tag: "平台项目", content: "完成部门看板原型的高保真交互联调。", author: "段明昊", due: "2026-06-05" }]
+      },
+      dept_l5_product_b: {
+        required: 10, filled: 8, trend: [78,80,82,83,86,84,80],
+        summary: ["完成项目需求池优先级梳理。", "输出平台项目日报字段口径。", "与研发确认日报链接和 AI 日报链接的展示方式。"],
+        projects: [{ name: "平台项目日报", platform: "平台项目", owner: "李四", progress: "完成平台项目卡片字段定义，支持项目进展、负责人和链接追溯。", rate: 80 }],
+        risks: [{ level: "低", project: "平台项目日报", tag: "平台项目", content: "部分历史项目缺少 AI 日报链接，需要补录。", submitter: "李四", analysis: "建议增加链接缺失状态和批量补录能力。" }],
+        plans: [{ scope: "team", project: "平台项目日报", tag: "平台项目", content: "补齐历史平台项目日报链接。", author: "李四", due: "2026-06-07" }]
+      },
+      dept_l5_design_ui: {
+        required: 12, filled: 12, trend: [88,90,93,92,95,96,100],
+        summary: ["完成 3 个页面 UI 设计稿交付。", "确认色彩规范和组件库更新方案。", "输出卡片、标签、风险模块的视觉规范。"],
+        projects: [{ name: "日报中心 UI", platform: "平台项目", owner: "王五", progress: "完成主页面视觉风格升级，统一卡片、图表和标签样式。", rate: 100 }],
+        risks: [],
+        plans: [{ scope: "team", project: "日报中心 UI", tag: "平台项目", content: "完成移动端适配稿。", author: "王五", due: "2026-06-08" }]
+      },
+      dept_l5_design_ux: {
+        required: 8, filled: 7, trend: [80,82,84,85,86,88,88],
+        summary: ["完成组织树抽屉交互评审。", "验证 L4/L5 层级切换后的信息理解成本。", "建议增加面包屑展示当前组织路径。"],
+        projects: [{ name: "组织架构交互", platform: "平台项目", owner: "赵六", progress: "完成组织架构抽屉和部门层级联动的交互验证。", rate: 88 }],
+        risks: [],
+        plans: [{ scope: "team", project: "组织架构交互", tag: "平台项目", content: "补充搜索和展开收起交互说明。", author: "赵六", due: "2026-06-06" }]
+      },
+      dept_l5_front_dashboard: {
+        required: 15, filled: 12, trend: [75,78,40,35,80,76,80],
+        summary: ["完成日报看板首页重构。", "优化图表渲染性能，低端设备帧率提升约 40%。", "解决多端适配下头部导航栏重叠问题。"],
+        projects: [{ name: "日报中心前端", platform: "平台项目", owner: "段明昊", progress: "完成抽屉式组织架构、填写率排行和主要卡片布局。", rate: 80 }],
+        risks: [{ level: "中", project: "日报中心前端", tag: "平台项目", content: "移动端侧栏和组织抽屉同时存在时可能遮挡。", submitter: "段明昊", analysis: "建议统一遮罩层优先级，并在移动端点击节点后自动收回抽屉。" }],
+        plans: [{ scope: "mine", project: "日报中心前端", tag: "平台项目", content: "完成 org chart 与排行模块的联动测试。", author: "段明昊", due: "2026-06-04" }]
+      },
+      dept_l5_front_mobile: {
+        required: 15, filled: 11, trend: [70,72,38,34,76,74,73],
+        summary: ["完成 768px 以下布局堆叠适配。", "优化移动端汉堡菜单和侧栏收起逻辑。", "正在检查图表在小屏幕下的可读性。"],
+        projects: [{ name: "移动端适配", platform: "平台项目", owner: "孙七", progress: "完成主页面移动端布局，但图表标签仍需进一步压缩。", rate: 73 }],
+        risks: [{ level: "低", project: "移动端适配", tag: "平台项目", content: "小屏幕下横向排行信息密度偏高。", submitter: "孙七", analysis: "可在移动端改为卡片排行，减少横向元素。" }],
+        plans: [{ scope: "team", project: "移动端适配", tag: "平台项目", content: "优化小屏幕排行组件展示。", author: "孙七", due: "2026-06-08" }]
+      },
+      dept_l5_api: {
+        required: 14, filled: 10, trend: [60,65,30,25,70,68,71],
+        summary: ["完成 API 数据源和 mock 数据源切换设计。", "新增 overview、risks、plans 等接口定义。", "正在联调真实 Workspace 数据。"],
+        projects: [{ name: "日报中心 API", platform: "平台项目", owner: "周八", progress: "完成 api_client 抽象层，支持 mock 与真实 API 双数据源。", rate: 71 }],
+        risks: [{ level: "高", project: "日报中心 API", tag: "平台项目", content: "真实接口返回字段不稳定，影响前端聚合统计。", submitter: "周八", analysis: "建议先定义稳定中间 JSON，前端只消费标准化结果。" }],
+        plans: [{ scope: "team", project: "日报中心 API", tag: "平台项目", content: "完成真实接口字段适配和异常兜底。", author: "周八", due: "2026-06-06" }]
+      },
+      dept_l5_data: {
+        required: 14, filled: 9, trend: [58,62,28,24,66,64,64],
+        summary: ["完成部门填写统计数据模型设计。", "定义 L4/L5 聚合口径。", "补充按日期查询的 mock 数据。"],
+        projects: [{ name: "日报统计数据层", platform: "平台项目", owner: "吴九", progress: "完成部门层级聚合算法，支持按叶子部门加权统计填写率。", rate: 64 }],
+        risks: [{ level: "中", project: "日报统计数据层", tag: "平台项目", content: "历史日期数据缺失，趋势图可能出现断点。", submitter: "吴九", analysis: "需要增加缺失数据补齐策略或在图表中显式展示无数据。" }],
+        plans: [{ scope: "team", project: "日报统计数据层", tag: "平台项目", content: "补充近 30 天历史统计数据。", author: "吴九", due: "2026-06-09" }]
+      },
+      dept_l5_auto_test: {
+        required: 12, filled: 7, trend: [40,45,20,15,50,42,58],
+        summary: ["完成第一轮自动化测试脚本编写。", "发现 8 个缺陷，其中 3 个严重、5 个一般。", "已提交缺陷报告并分配给对应开发人员。"],
+        projects: [{ name: "看板自动化测试", platform: "平台项目", owner: "郑十", progress: "完成核心页面回归脚本，正在补充组织树联动 case。", rate: 58 }],
+        risks: [{ level: "高", project: "看板自动化测试", tag: "平台项目", content: "组织树多层级联动测试 case 尚未覆盖完全。", submitter: "郑十", analysis: "建议优先覆盖 L5、L4、L3、根节点四类核心场景。" }],
+        plans: [{ scope: "team", project: "看板自动化测试", tag: "平台项目", content: "补充多层级组织树联动测试用例。", author: "郑十", due: "2026-06-05" }]
+      },
+      dept_l5_manual_test: {
+        required: 11, filled: 4, trend: [35,40,18,14,46,39,36],
+        summary: ["完成主流程手工测试。", "发现风险卡片在极端长文本下溢出。", "移动端部分卡片间距需要调整。"],
+        projects: [{ name: "看板手工测试", platform: "平台项目", owner: "钱十一", progress: "完成主流程验证，发现部分极端样式问题。", rate: 36 }],
+        risks: [{ level: "高", project: "看板手工测试", tag: "平台项目", content: "低填写率部门较多，可能影响上线前验收判断。", submitter: "钱十一", analysis: "建议增加未填人员明细和提醒入口。" }],
+        plans: [{ scope: "team", project: "看板手工测试", tag: "平台项目", content: "完成风险和计划模块极端文本测试。", author: "钱十一", due: "2026-06-07" }]
+      }
+    };
+
+    let selectedDeptId = "dept_root";
+    let currentPage = "dept";
+    let activeTab = "dept";
+    const collapsed = new Set();
+
+    function findNode(id, node = orgTree) {
+      if (node.id === id) return node;
+      for (const child of node.children || []) {
+        const found = findNode(id, child);
+        if (found) return found;
+      }
+      return null;
+    }
+
+    function findParent(id, node = orgTree, parent = null) {
+      if (node.id === id) return parent;
+      for (const child of node.children || []) {
+        const found = findParent(id, child, node);
+        if (found) return found;
+      }
+      return null;
+    }
+
+    function walk(node, fn) {
+      fn(node);
+      (node.children || []).forEach(child => walk(child, fn));
+    }
+
+    function getPath(id) {
+      const path = [];
+      let node = findNode(id);
+      while (node) {
+        path.unshift(node);
+        node = findParent(node.id);
+      }
+      return path;
+    }
+
+    function getLeaves(node) {
+      if (!node.children || node.children.length === 0) return [node];
+      return node.children.flatMap(getLeaves);
+    }
+
+    function getRateClass(rate) {
+      if (rate >= 80) return "rate-good";
+      if (rate >= 60) return "rate-mid";
+      return "rate-bad";
+    }
+
+    function aggregateDept(node) {
+      const leaves = getLeaves(node);
+      const required = leaves.reduce((sum, leaf) => sum + leafData[leaf.id].required, 0);
+      const filled = leaves.reduce((sum, leaf) => sum + leafData[leaf.id].filled, 0);
+      const unfilled = required - filled;
+      const rate = required ? Math.round(filled / required * 100) : 0;
+
+      const trend = [0,1,2,3,4,5,6].map(i => {
+        const weighted = leaves.reduce((sum, leaf) => {
+          const d = leafData[leaf.id];
+          return sum + d.required * d.trend[i] / 100;
+        }, 0);
+        return required ? Math.round(weighted / required * 100) : 0;
+      });
+
+      return {
+        leaves,
+        required,
+        filled,
+        unfilled,
+        rate,
+        trend,
+        summaries: leaves.flatMap(leaf => leafData[leaf.id].summary.map(text => ({ dept: leaf.name, text }))),
+        projects: leaves.flatMap(leaf => leafData[leaf.id].projects.map(p => ({ ...p, dept: leaf.name }))),
+        risks: leaves.flatMap(leaf => leafData[leaf.id].risks.map(r => ({ ...r, dept: leaf.name }))),
+        plans: leaves.flatMap(leaf => leafData[leaf.id].plans.map(p => ({ ...p, dept: leaf.name })))
+      };
+    }
+
+    function getNodeRate(node) {
+      return aggregateDept(node).rate;
+    }
+
+    function toggleSidebar() {
+      document.getElementById("sidebar").classList.toggle("open");
+    }
+
+    function handleNavClick(page) {
+      currentPage = page;
+      document.querySelectorAll(".nav a").forEach(a => {
+        a.classList.toggle("active", a.dataset.page === page);
+      });
+
+      if (page === "dept") {
+        switchTab("dept");
+        document.getElementById("orgAction").style.display = "flex";
+      } else {
+        switchTab("project");
+        closeOrgDrawer();
+        document.getElementById("orgAction").style.display = "none";
+      }
+    }
+
+    function toggleOrgDrawer() {
+      const drawer = document.getElementById("orgDrawer");
+      drawer.classList.contains("active") ? closeOrgDrawer() : openOrgDrawer();
+    }
+
+    function openOrgDrawer() {
+      if (currentPage !== "dept") return;
+      document.getElementById("orgDrawer").classList.add("active");
+      document.getElementById("drawerMask").classList.add("active");
+      document.getElementById("orgAction").classList.add("open");
+      document.getElementById("orgAction").querySelector("span:last-child").textContent = "收回组织架构";
+    }
+
+    function closeOrgDrawer() {
+      document.getElementById("orgDrawer").classList.remove("active");
+      document.getElementById("drawerMask").classList.remove("active");
+      document.getElementById("orgAction").classList.remove("open");
+      const action = document.getElementById("orgAction").querySelector("span:last-child");
+      if (action) action.textContent = "展开组织架构";
+    }
+
+    function selectDept(id) {
+      selectedDeptId = id;
+
+      // 展开选中节点的祖先路径，避免选中后被隐藏
+      getPath(id).forEach(n => collapsed.delete(n.id));
+
+      renderMiniDepts();
+      renderTree();
+      refreshDashboard();
+      if (window.innerWidth < 992) closeOrgDrawer();
+    }
+
+    function toggleNode(id, event) {
+      event.stopPropagation();
+      const node = findNode(id);
+      if (!node || !node.children || node.children.length === 0) return;
+
+      if (collapsed.has(id)) collapsed.delete(id);
+      else collapsed.add(id);
+
+      renderTree();
+    }
+
+    function expandAll() {
+      collapsed.clear();
+      renderTree();
+    }
+
+    function collapseToLevel(level) {
+      collapsed.clear();
+      walk(orgTree, node => {
+        if (node.level >= level && node.children && node.children.length) {
+          collapsed.add(node.id);
+        }
+      });
+      getPath(selectedDeptId).forEach(n => collapsed.delete(n.id));
+      renderTree();
+    }
+
+    function nodeMatchesSearch(node, q) {
+      if (!q) return true;
+      if (node.name.toLowerCase().includes(q.toLowerCase())) return true;
+      return (node.children || []).some(child => nodeMatchesSearch(child, q));
+    }
+
+    function highlight(text, q) {
+      if (!q) return text;
+      const safe = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      return text.replace(new RegExp(safe, "gi"), match => `<span class="highlight-mark">${match}</span>`);
+    }
+
+    function renderTree() {
+      const q = document.getElementById("orgSearchInput").value.trim();
+      document.getElementById("orgTree").innerHTML = buildTreeHtml(orgTree, q);
+    }
+
+    function buildTreeHtml(node, q = "") {
+      if (!nodeMatchesSearch(node, q)) return "";
+      const hasChildren = node.children && node.children.length;
+      const rate = getNodeRate(node);
+      const isCollapsed = collapsed.has(node.id) && !q;
+
+      return `
+        <ul>
+          <li class="tree-node">
+            <div class="node-line ${node.id === selectedDeptId ? "selected" : ""}" onclick="selectDept('${node.id}')">
+              <span
+                class="node-expander ${hasChildren ? "has-children" : ""} ${isCollapsed ? "collapsed" : ""}"
+                onclick="toggleNode('${node.id}', event)"
+                title="${hasChildren ? (isCollapsed ? "展开下级" : "隐藏下级") : "末级部门"}"
+              >${hasChildren ? "▾" : "•"}</span>
+              <span class="node-name" title="${node.name}">${highlight(node.name, q)}</span>
+              <span class="level-tag">L${node.level}</span>
+              <span class="rate-pill ${getRateClass(rate)}" style="font-size:11px;padding:2px 6px;">${rate}%</span>
+            </div>
+            ${hasChildren ? `
+              <div class="children-wrap ${isCollapsed ? "collapsed" : ""}">
+                <div class="children-inner">
+                  ${(node.children || []).map(child => buildTreeHtml(child, q)).join("")}
+                </div>
+              </div>
+            ` : ""}
+          </li>
+        </ul>
+      `;
+    }
+
+    function renderMiniDepts() {
+      const list = document.getElementById("miniDeptList");
+      list.innerHTML = orgTree.children.map(node => {
+        const rate = getNodeRate(node);
+        return `
+          <button class="mini-dept ${node.id === selectedDeptId ? "active" : ""}" onclick="selectDept('${node.id}')">
+            <span>${node.name}</span>
+            <span class="rate-pill ${getRateClass(rate)}">${rate}%</span>
+          </button>
+        `;
+      }).join("");
+    }
+
+
+    let trendHoverIndex = -1;
+    let trendSelectedIndex = 6;
+    let lastTrendValues = [];
+    const trendLabels = ["周四", "周五", "周六", "周日", "周一", "周二", "今日"];
+
+    function animateNumber(id, target, suffix = "") {
+      const el = document.getElementById(id);
+      const start = Number((el.textContent || "0").replace("%", "")) || 0;
+      const duration = 520;
+      const startTime = performance.now();
+
+      function tick(now) {
+        const p = Math.min(1, (now - startTime) / duration);
+        const eased = 1 - Math.pow(1 - p, 3);
+        const value = Math.round(start + (target - start) * eased);
+        el.textContent = `${value}${suffix}`;
+        if (p < 1) requestAnimationFrame(tick);
+      }
+
+      requestAnimationFrame(tick);
+    }
+
+    function animateDonut(rate) {
+      const donut = document.getElementById("donut");
+      const from = Number(donut.dataset.angle || 0);
+      const to = Math.round(rate * 3.6);
+      const duration = 650;
+      const startTime = performance.now();
+
+      function tick(now) {
+        const p = Math.min(1, (now - startTime) / duration);
+        const eased = 1 - Math.pow(1 - p, 3);
+        const angle = Math.round(from + (to - from) * eased);
+        donut.style.setProperty("--angle", `${angle}deg`);
+        donut.dataset.angle = angle;
+        if (p < 1) requestAnimationFrame(tick);
+      }
+
+      requestAnimationFrame(tick);
+    }
+
+    function showTooltip(x, y, html) {
+      const tooltip = document.getElementById("chartTooltip");
+      tooltip.innerHTML = html;
+      tooltip.style.left = `${x + 14}px`;
+      tooltip.style.top = `${y + 14}px`;
+      tooltip.classList.add("active");
+    }
+
+    function hideTooltip() {
+      document.getElementById("chartTooltip").classList.remove("active");
+    }
+
+    function getTrendPointFromEvent(event) {
+      const canvas = document.getElementById("trendCanvas");
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const x = (event.clientX - rect.left) * scaleX;
+
+      const pad = { l: 42, r: 18 };
+      const cw = canvas.width - pad.l - pad.r;
+      const step = cw / (trendLabels.length - 1);
+      const idx = Math.round((x - pad.l) / step);
+      if (idx < 0 || idx >= trendLabels.length) return -1;
+
+      const px = pad.l + step * idx;
+      return Math.abs(x - px) <= step / 2 ? idx : -1;
+    }
+
+    function setupTrendInteractions() {
+      const canvas = document.getElementById("trendCanvas");
+      if (canvas.dataset.bound === "true") return;
+      canvas.dataset.bound = "true";
+
+      canvas.addEventListener("mousemove", event => {
+        const idx = getTrendPointFromEvent(event);
+        if (idx !== trendHoverIndex) {
+          trendHoverIndex = idx;
+          drawTrend("trendCanvas", lastTrendValues);
+        }
+
+        if (idx >= 0) {
+          showTooltip(
+            event.clientX,
+            event.clientY,
+            `<strong>${trendLabels[idx]}</strong><span>填写率：${lastTrendValues[idx]}%</span><br><span>点击可锁定该日期</span>`
+          );
+        } else {
+          hideTooltip();
+        }
+      });
+
+      canvas.addEventListener("mouseleave", () => {
+        trendHoverIndex = -1;
+        hideTooltip();
+        drawTrend("trendCanvas", lastTrendValues);
+      });
+
+      canvas.addEventListener("click", event => {
+        const idx = getTrendPointFromEvent(event);
+        if (idx >= 0) {
+          trendSelectedIndex = idx;
+          drawTrend("trendCanvas", lastTrendValues);
+          showTooltip(
+            event.clientX,
+            event.clientY,
+            `<strong>已选择 ${trendLabels[idx]}</strong><span>填写率：${lastTrendValues[idx]}%</span>`
+          );
+        }
+      });
+    }
+
+    function openFillDetailModal() {
+      const node = findNode(selectedDeptId);
+      const data = aggregateDept(node);
+      const mask = document.getElementById("detailModalMask");
+      document.getElementById("modalTitle").textContent = `${node.name} 填写明细`;
+      document.getElementById("modalSub").textContent = node.level === 5
+        ? "当前五级部门明细"
+        : `当前范围聚合 ${data.leaves.length} 个 L5 部门`;
+
+      document.getElementById("modalBody").innerHTML = data.leaves.map(leaf => {
+        const d = aggregateDept(leaf);
+        return `
+          <div class="detail-row" onclick="selectDept('${leaf.id}'); closeDetailModal();">
+            <div>
+              <div class="detail-name">${leaf.name}</div>
+              <div class="detail-meta">应填 ${d.required} 人 ｜ 已填 ${d.filled} 人 ｜ 未填 ${d.unfilled} 人</div>
+            </div>
+            <div class="detail-rate">${d.rate}%</div>
+          </div>
+        `;
+      }).join("");
+
+      mask.classList.add("active");
+    }
+
+    function closeDetailModal(event) {
+      if (event && event.target.id !== "detailModalMask") return;
+      document.getElementById("detailModalMask").classList.remove("active");
+    }
+
+
+    function drawTrend(canvasId, values) {
+      lastTrendValues = values;
+      setupTrendInteractions();
+
+      const canvas = document.getElementById(canvasId);
+      const ctx = canvas.getContext("2d");
+      const w = canvas.width;
+      const h = canvas.height;
+      ctx.clearRect(0,0,w,h);
+
+      const pad = { l: 42, r: 18, t: 18, b: 38 };
+      const cw = w - pad.l - pad.r;
+      const ch = h - pad.t - pad.b;
+
+      ctx.strokeStyle = "#f1f5f9";
+      ctx.lineWidth = 1;
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "12px Inter, system-ui, sans-serif";
+
+      for (let i = 0; i <= 5; i++) {
+        const y = pad.t + ch * i / 5;
+        ctx.beginPath();
+        ctx.moveTo(pad.l, y);
+        ctx.lineTo(w - pad.r, y);
+        ctx.stroke();
+        ctx.fillText(`${100 - i * 20}%`, 2, y + 4);
+      }
+
+      trendLabels.forEach((label, i) => {
+        const x = pad.l + cw * i / (trendLabels.length - 1);
+        ctx.fillText(label, x - 14, h - 12);
+      });
+
+      const points = values.map((v, i) => ({
+        x: pad.l + cw * i / (values.length - 1),
+        y: pad.t + ch * (100 - v) / 100
+      }));
+
+      const grad = ctx.createLinearGradient(0, pad.t, 0, h - pad.b);
+      grad.addColorStop(0, "rgba(79,110,247,.22)");
+      grad.addColorStop(1, "rgba(79,110,247,0)");
+
+      ctx.beginPath();
+      points.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
+      ctx.lineTo(points[points.length - 1].x, h - pad.b);
+      ctx.lineTo(points[0].x, h - pad.b);
+      ctx.closePath();
+      ctx.fillStyle = grad;
+      ctx.fill();
+
+      ctx.beginPath();
+      points.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
+      ctx.strokeStyle = "#4f6ef7";
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      if (trendSelectedIndex >= 0 && points[trendSelectedIndex]) {
+        const p = points[trendSelectedIndex];
+        ctx.strokeStyle = "rgba(79,110,247,.28)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(p.x, pad.t);
+        ctx.lineTo(p.x, h - pad.b);
+        ctx.stroke();
+
+        ctx.fillStyle = "rgba(79,110,247,.08)";
+        ctx.fillRect(p.x - 22, pad.t, 44, ch);
+      }
+
+      points.forEach((p, i) => {
+        const active = i === trendHoverIndex || i === trendSelectedIndex;
+        ctx.beginPath();
+        ctx.fillStyle = "#fff";
+        ctx.arc(p.x, p.y, active ? 8 : 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = active ? "#3150d4" : "#4f6ef7";
+        ctx.lineWidth = active ? 4 : 3;
+        ctx.stroke();
+
+        if (active) {
+          ctx.fillStyle = "#1e293b";
+          ctx.font = "bold 12px Inter, system-ui, sans-serif";
+          ctx.fillText(`${values[i]}%`, p.x - 14, p.y - 14);
+          ctx.font = "12px Inter, system-ui, sans-serif";
+        }
+      });
+    }
+
+    function getRankingCandidates(node) {
+      if (node.level === 5) {
+        const parent = findParent(node.id);
+        return parent?.children || [node];
+      }
+      return getLeaves(node);
+    }
+
+    function renderRanking(node) {
+      const rows = getRankingCandidates(node).map(n => {
+        const d = aggregateDept(n);
+        const avg = Math.round(d.trend.reduce((a,b) => a+b, 0) / d.trend.length);
+        return { node: n, data: d, avg };
+      }).sort((a,b) => b.avg - a.avg);
+
+      document.getElementById("rankTitle").textContent = node.level === 5
+        ? "一周同部门填写率排行"
+        : `L${node.level} 旗下 L5 部门填写率排行`;
+
+      document.getElementById("rankSub").textContent = node.level === 5
+        ? "展示同一父部门下 L5 部门的一周平均填写率"
+        : "展示当前部门下所有 L5 部门的一周平均填写率";
+
+      document.getElementById("rankList").innerHTML = rows.map((row, idx) => `
+        <div class="rank-row" onclick="selectDept('${row.node.id}')">
+          <div class="rank-no">${idx + 1}</div>
+          <div>
+            <div class="rank-name">${row.node.name}</div>
+            <div class="rank-bar-bg"><div class="rank-bar" style="width:${row.avg}%"></div></div>
+            <div class="rank-meta">今日 ${row.data.rate}% ｜ 应填 ${row.data.required} ｜ 已填 ${row.data.filled}</div>
+          </div>
+          <div class="rank-rate">${row.avg}%</div>
+        </div>
+      `).join("");
+    }
+
+    function switchTab(tab) {
+      activeTab = tab;
+      document.querySelectorAll(".tab").forEach(btn => btn.classList.toggle("active", btn.dataset.tab === tab));
+      document.getElementById("deptContent").classList.toggle("hidden", tab !== "dept");
+      document.getElementById("projectContent").classList.toggle("hidden", tab !== "project");
+    }
+
+    function renderDeptContent(node, data) {
+      const isLeaf = node.level === 5;
+
+      if (isLeaf) {
+        document.getElementById("deptContent").innerHTML = `
+          <div class="summary-list">
+            <div class="summary-card">
+              <div class="summary-head">
+                <div>
+                  <h4 class="summary-title">📄 今日工作总结（${node.name}）</h4>
+                  <div class="summary-meta">填写率 ${data.rate}% ｜ 应填 ${data.required} ｜ 已填 ${data.filled}</div>
+                </div>
+                <span class="tag">部门日报</span>
+              </div>
+              <div class="summary-body">
+                <ul>${data.summaries.map(item => `<li>${item.text}</li>`).join("")}</ul>
+              </div>
+              <div class="summary-footer">
+                <div class="link-group">
+                  <a class="text-link" href="javascript:void(0)">↗ 查看原文</a>
+                  <a class="text-link ai" href="javascript:void(0)">✦ 查看AI日报</a>
+                </div>
+                <span class="card-subtitle">更新于 17:45</span>
+              </div>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      document.getElementById("deptContent").innerHTML = `
+        <div class="summary-list">
+          ${data.leaves.map(leaf => {
+            const d = leafData[leaf.id];
+            const ld = aggregateDept(leaf);
+            return `
+              <div class="summary-card">
+                <div class="summary-head">
+                  <div>
+                    <h4 class="summary-title">📄 今日工作总结（${leaf.name}）</h4>
+                    <div class="summary-meta">填写率 ${ld.rate}% ｜ 应填 ${ld.required} ｜ 已填 ${ld.filled}</div>
+                  </div>
+                  <span class="tag">L5部门</span>
+                </div>
+                <div class="summary-body">
+                  <ul>${d.summary.map(text => `<li>${text}</li>`).join("")}</ul>
+                </div>
+                <div class="summary-footer">
+                  <div class="link-group">
+                    <a class="text-link" href="javascript:void(0)">↗ 查看原文</a>
+                    <a class="text-link ai" href="javascript:void(0)">✦ 查看AI日报</a>
+                  </div>
+                  <span class="card-subtitle">更新于 17:45</span>
+                </div>
+              </div>
+            `;
+          }).join("")}
+        </div>
+      `;
+    }
+
+    function renderProjectContent(data) {
+      if (!data.projects.length) {
+        document.getElementById("projectContent").innerHTML = `<div class="empty">暂无平台项目日报</div>`;
+        return;
+      }
+
+      document.getElementById("projectContent").innerHTML = `
+        <div class="project-grid">
+          ${data.projects.map(p => `
+            <div class="project-card">
+              <div class="summary-head" style="margin-bottom:12px;">
+                <div>
+                  <div class="project-title">${p.name}</div>
+                  <div class="summary-meta">${p.dept} ｜ 负责人：${p.owner} ｜ 填写率 ${p.rate}%</div>
+                </div>
+                <span class="tag">${p.platform}</span>
+              </div>
+              <div class="summary-body" style="font-size:13px;">${p.progress}</div>
+              <div class="summary-footer" style="padding-top:14px;margin-top:14px;">
+                <div class="link-group">
+                  <a class="text-link" href="javascript:void(0)">↗ 查看原文</a>
+                  <a class="text-link ai" href="javascript:void(0)">✦ 查看AI日报</a>
+                </div>
+              </div>
+            </div>
+          `).join("")}
+        </div>
+      `;
+    }
+
+    function renderRisks(risks) {
+      document.getElementById("riskCount").textContent = `${risks.length} 条`;
+      if (!risks.length) {
+        document.getElementById("riskList").innerHTML = `<div class="empty">当前范围暂无明显风险</div>`;
+        return;
+      }
+
+      const cls = { "高": "high", "中": "mid", "低": "low" };
+      const order = { "高": 1, "中": 2, "低": 3 };
+
+      document.getElementById("riskList").innerHTML = risks.slice().sort((a,b) => order[a.level] - order[b.level]).map(r => `
+        <div class="risk-card ${cls[r.level]}">
+          <div class="risk-head">
+            <div class="risk-project">${r.project}</div>
+            <span class="tag">${r.tag}</span>
+          </div>
+          <div class="risk-body">${r.content}</div>
+          <div class="risk-meta">
+            <span>${r.dept} ｜ 提交人：${r.submitter}</span>
+            <span class="risk-level ${cls[r.level]}">${r.level}风险</span>
+          </div>
+          <div class="risk-analysis">风险点分析：${r.analysis}</div>
+        </div>
+      `).join("");
+    }
+
+    function renderPlans(plans) {
+      const mine = plans.filter(p => p.scope === "mine" || p.author === "段明昊");
+      const team = plans;
+
+      const mineHtml = mine.length ? mine.map(p => `
+        <div class="plan-dot-row">
+          <div class="plan-dot"></div>
+          <div class="plan-text">
+            <div class="plan-project">${p.project} <span class="tag" style="margin-left:4px;">${p.tag}</span></div>
+            <div class="plan-content">${p.content}</div>
+            <div class="plan-author">${p.dept} ｜ 撰写人：${p.author} ｜ 截止：${p.due}</div>
+          </div>
+        </div>
+      `).join("") : `<div class="empty">暂无我的计划</div>`;
+
+      const teamHtml = team.length ? team.map(p => `
+        <div class="team-plan-card">
+          <div class="plan-project">${p.project} <span class="tag" style="margin-left:4px;">${p.tag}</span></div>
+          <div class="plan-content">${p.content}</div>
+          <div class="plan-author">${p.dept} ｜ 撰写人：${p.author} ｜ 截止：${p.due}</div>
+        </div>
+      `).join("") : `<div class="empty">暂无团队计划</div>`;
+
+      document.getElementById("planList").innerHTML = `
+        <div>
+          <div class="plan-section-title">
+            <span>我的计划</span>
+            <button class="download-link" onclick="exportPlans()">↓ 导出为 txt</button>
+          </div>
+          <div class="plan-list">${mineHtml}</div>
+        </div>
+        <div style="margin-top:22px;">
+          <div class="plan-section-title"><span>团队计划</span></div>
+          <div class="plan-list">${teamHtml}</div>
+        </div>
+      `;
+    }
+
+    function exportPlans() {
+      const node = findNode(selectedDeptId);
+      const data = aggregateDept(node);
+      const mine = data.plans.filter(p => p.scope === "mine" || p.author === "段明昊");
+
+      let text = `我的下一步计划\n查看范围：${node.name}\n日期：${document.getElementById("datePicker").value}\n姓名：段明昊\n\n`;
+      if (!mine.length) {
+        text += "暂无我的计划。\n";
+      } else {
+        mine.forEach((p, i) => {
+          text += `${i + 1}. [${p.project}] ${p.content}\n   所属部门：${p.dept}\n   截止日期：${p.due}\n\n`;
+        });
+      }
+
+      const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `下一步计划_段明昊_${document.getElementById("datePicker").value}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function refreshDashboard() {
+      const node = findNode(selectedDeptId);
+      const data = aggregateDept(node);
+
+      document.getElementById("currentDeptChip").textContent = node.name;
+      document.getElementById("breadcrumb").innerHTML = getPath(node.id).map(n => `<span class="crumb">${n.name}</span>`).join("");
+
+      animateDonut(data.rate);
+      animateNumber("fillRateText", data.rate, "%");
+      animateNumber("overallRateText", data.rate, "%");
+      animateNumber("requiredCount", data.required);
+      animateNumber("filledCount", data.filled);
+      animateNumber("unfilledCount", data.unfilled);
+
+      document.getElementById("scopeText").textContent = node.level === 5
+        ? "当前为 L5 部门，展示本部门明细"
+        : `当前为 L${node.level} 部门，聚合旗下 ${data.leaves.length} 个 L5 部门`;
+
+      document.getElementById("trendSub").textContent = node.level === 5
+        ? "当前 L5 部门最近 7 天数据"
+        : `当前 L${node.level} 部门聚合最近 7 天数据`;
+
+      drawTrend("trendCanvas", data.trend);
+      renderRanking(node);
+      renderDeptContent(node, data);
+      renderProjectContent(data);
+      renderRisks(data.risks);
+      renderPlans(data.plans);
+      renderMiniDepts();
+      renderTree();
+      switchTab(activeTab);
+    }
+
+    function updateDateDisplay() {
+      const date = new Date(document.getElementById("datePicker").value || "2026-06-03");
+      const text = date.toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric", weekday: "long" });
+      document.getElementById("currentDateDisplay").textContent = text;
+    }
+
+    document.getElementById("datePicker").addEventListener("change", updateDateDisplay);
+
+    // 初始状态：只展开到 L3，保持树清爽；选中路径始终展开
+    walk(orgTree, node => {
+      if (node.level >= 3 && node.children && node.children.length) collapsed.add(node.id);
+    });
+    getPath(selectedDeptId).forEach(n => collapsed.delete(n.id));
+
+    renderMiniDepts();
+    renderTree();
+    updateDateDisplay();
+    refreshDashboard();
+  </script>
+</body>
+</html>
